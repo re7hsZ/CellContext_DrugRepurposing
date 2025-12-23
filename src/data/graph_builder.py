@@ -58,6 +58,7 @@ class GraphBuilder:
         )
         
         if not os.path.exists(embed_path):
+            print(f"PINNACLE embeddings not found: {embed_path}")
             return
         
         self.pinnacle_embeds = torch.load(embed_path, weights_only=False)
@@ -69,6 +70,8 @@ class GraphBuilder:
         names = labels.get('Name', [])
         
         self.pinnacle_cell_data = {}
+        self.pinnacle_all_proteins = set()
+        
         idx = 0
         for cell_idx in sorted(self.pinnacle_embeds.keys()):
             n_proteins = self.pinnacle_embeds[cell_idx].shape[0]
@@ -79,7 +82,11 @@ class GraphBuilder:
                     'cell_idx': cell_idx,
                     'proteins': proteins
                 }
+                self.pinnacle_all_proteins.update(proteins.keys())
             idx += n_proteins
+        
+        print(f"PINNACLE loaded: {len(self.pinnacle_cell_data)} cell types, "
+              f"{len(self.pinnacle_all_proteins)} unique proteins")
 
     def _get_pinnacle_embed(self, cell_type_file, protein_name):
         """Retrieve PINNACLE embedding for a protein in given cell context."""
@@ -223,7 +230,7 @@ class GraphBuilder:
                 if rev_key not in data.edge_types:
                     data[rev_key].edge_index = data[src, rel, dst].edge_index[[1, 0]]
         
-        # Build features
+        # Build node features with ID alignment check
         embed_dim = 128
         for node_type in data.node_types:
             n = data[node_type].num_nodes
@@ -233,10 +240,21 @@ class GraphBuilder:
                     self.node_mapping['node_type'] == 'gene/protein'
                 ].sort_values('node_idx')['node_name'].tolist()
                 
+                matched = 0
                 for i, name in enumerate(genes[:n]):
                     emb = self._get_pinnacle_embed(cell_type_file, name)
                     if emb is not None:
                         feats[i] = emb
+                        matched += 1
+                
+                # ID alignment check
+                print(f"[ID Alignment] Gene features: {matched}/{n} matched "
+                      f"({100*matched/n:.1f}%)")
+                
+                if matched < n * 0.01:
+                    print("[Warning] Very low match rate! Check ID mapping between "
+                          "PrimeKG and PINNACLE.")
+                
                 data[node_type].x = feats
             else:
                 data[node_type].x = torch.zeros(n, embed_dim)

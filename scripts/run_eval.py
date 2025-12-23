@@ -48,12 +48,14 @@ def main():
     # Model
     model_cfg = config['model']
     num_nodes = {nt: data[nt].num_nodes for nt in data.node_types}
+    input_channels = {nt: data[nt].x.shape[1] for nt in data.node_types if hasattr(data[nt], 'x')}
     
     model = HeteroGCN(
         data.metadata(),
         hidden_channels=model_cfg.get('hidden_channels', 64),
         num_layers=model_cfg.get('num_layers', 2),
-        num_nodes_dict=num_nodes
+        num_nodes_dict=num_nodes,
+        input_channels_dict=input_channels
     ).to(device)
     
     predictor = LinkPredictor().to(device)
@@ -72,7 +74,9 @@ def main():
     target = ('drug', 'indication', 'disease')
     
     with torch.no_grad():
-        z_dict = model(test_data.edge_index_dict)
+        x_dict = {nt: test_data[nt].x for nt in test_data.node_types}
+        z_dict = model(x_dict, test_data.edge_index_dict)
+        
         edge_idx = test_data[target].edge_label_index
         edge_label = test_data[target].edge_label
         

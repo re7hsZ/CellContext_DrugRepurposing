@@ -24,7 +24,9 @@ class Trainer:
         data = data.to(self.device)
         self.optimizer.zero_grad()
         
-        z_dict = self.model(data.edge_index_dict)
+        # Pass x_dict and edge_index_dict to model
+        x_dict = {nt: data[nt].x for nt in data.node_types if hasattr(data[nt], 'x')}
+        z_dict = self.model(x_dict, data.edge_index_dict)
         
         edge_label_index = data[self.target_edge].edge_label_index
         edge_label = data[self.target_edge].edge_label
@@ -44,7 +46,9 @@ class Trainer:
         self.predictor.eval()
         
         data = data.to(self.device)
-        z_dict = self.model(data.edge_index_dict)
+        
+        x_dict = {nt: data[nt].x for nt in data.node_types if hasattr(data[nt], 'x')}
+        z_dict = self.model(x_dict, data.edge_index_dict)
         
         edge_label_index = data[self.target_edge].edge_label_index
         edge_label = data[self.target_edge].edge_label
