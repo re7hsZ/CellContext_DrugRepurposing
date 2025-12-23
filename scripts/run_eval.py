@@ -15,7 +15,7 @@ from src.evaluation import calculate_metrics, calculate_mrr
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='configs/config_base.yaml')
-    parser.add_argument('--checkpoint', default='results/checkpoints/best_model.pth')
+    parser.add_argument('--checkpoint', default=None)
     args = parser.parse_args()
     
     config = load_config(args.config)
@@ -56,13 +56,29 @@ def main():
         num_nodes_dict=num_nodes
     ).to(device)
     
+    # Dummy forward to initialize LazyLinear before loading weights
+    with torch.no_grad():
+        dummy_x = {nt: test_data[nt].x.to(device) for nt in test_data.node_types}
+        _ = model(dummy_x, test_data.to(device).edge_index_dict)
+    
     predictor = LinkPredictor().to(device)
     
+    # Determine checkpoint path
+    if args.checkpoint:
+        ckpt_path = args.checkpoint
+    else:
+        cell_name = os.path.splitext(cell_type)[0]
+        ckpt_path = os.path.join(
+            config['paths']['results_dir'], 
+            'checkpoints', 
+            f'best_model_{cell_name}.pth'
+        )
+    
     # Load checkpoint
-    ckpt = torch.load(args.checkpoint, weights_only=False)
+    ckpt = torch.load(ckpt_path, weights_only=False)
     model.load_state_dict(ckpt['model_state_dict'])
     predictor.load_state_dict(ckpt['predictor_state_dict'])
-    logger.info(f"Loaded checkpoint from epoch {ckpt['epoch']}")
+    logger.info(f"Loaded checkpoint: {ckpt_path} (epoch {ckpt['epoch']})")
     
     # Evaluate
     model.eval()

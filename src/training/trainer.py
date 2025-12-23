@@ -24,7 +24,6 @@ class Trainer:
         data = data.to(self.device)
         self.optimizer.zero_grad()
         
-        # Pass x_dict and edge_index_dict to model
         x_dict = {nt: data[nt].x for nt in data.node_types if hasattr(data[nt], 'x')}
         z_dict = self.model(x_dict, data.edge_index_dict)
         
@@ -88,13 +87,20 @@ class Trainer:
                     self._save_checkpoint(epoch, metrics)
 
     def _save_checkpoint(self, epoch, metrics):
-        """Save model checkpoint."""
+        """Save model checkpoint with cell-type specific naming."""
         save_dir = os.path.join(self.config['paths']['results_dir'], 'checkpoints')
         os.makedirs(save_dir, exist_ok=True)
+        
+        # Use cell_type in filename to avoid overwriting
+        cell_type = self.config['data'].get('cell_type', 'default')
+        cell_name = os.path.splitext(cell_type)[0]
+        filename = f"best_model_{cell_name}.pth"
         
         torch.save({
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
             'predictor_state_dict': self.predictor.state_dict(),
             'metrics': metrics
-        }, os.path.join(save_dir, 'best_model.pth'))
+        }, os.path.join(save_dir, filename))
+        
+        self.logger.info(f"Saved checkpoint: {filename}")

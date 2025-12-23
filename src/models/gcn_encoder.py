@@ -24,6 +24,9 @@ class HeteroGCN(nn.Module):
         # LazyLinear auto-adapts to input dimension (PINNACLE features)
         self.feature_proj = nn.LazyLinear(hidden_channels)
         
+        # LayerNorm for feature distribution stability
+        self.layernorm = nn.LayerNorm(hidden_channels)
+        
         # GNN layers
         self.convs = nn.ModuleList()
         for _ in range(num_layers):
@@ -48,7 +51,8 @@ class HeteroGCN(nn.Module):
             
             # Check if features exist and are non-zero (PINNACLE features for gene)
             if x is not None and x.shape[1] > 1 and x.abs().sum() > 0:
-                h_dict[node_type] = self.feature_proj(x)
+                h = self.feature_proj(x)
+                h_dict[node_type] = self.layernorm(h)
             else:
                 # Use learnable embeddings (drug, disease)
                 h_dict[node_type] = self.embeddings[node_type].weight
