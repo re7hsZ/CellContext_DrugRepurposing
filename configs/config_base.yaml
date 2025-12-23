@@ -1,0 +1,33 @@
+project_name: "CellContext_DrugRepurposing"
+
+paths:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  results_dir: "results"
+
+data:
+  # Cell type specific file identifier (e.g. filename in raw/pinnacle/networks/ppi_edgelists)
+  # Override this in config_liver.yaml etc.
+  cell_type: "microglial_cell.txt" 
+  
+  # Graph Construction
+  neg_sampling_ratio: 1.0 # For training
+  
+model:
+  type: "HeteroGCN"
+  hidden_channels: 64
+  num_layers: 2
+  dropout: 0.1
+
+training:
+  epochs: 100
+  batch_size: -1 # -1 for full graph
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  device: "auto" # auto, cpu, cuda
+  seed: 42
+  
+split:
+  val_ratio: 0.1
+  test_ratio: 0.1
+  strategy: "random" # random, time, disease

@@ -1,0 +1,32 @@
+# Hepatocyte (Liver) Cell Type Configuration
+# Inherits from config_base.yaml conceptually; override values here.
+
+project_name: "CellContext_DrugRepurposing_Liver"
+
+paths:
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  results_dir: "results"
+
+data:
+  cell_type: "hepatocyte.txt"
+  neg_sampling_ratio: 1.0
+
+model:
+  type: "HeteroGCN"
+  hidden_channels: 64
+  num_layers: 2
+  dropout: 0.1
+
+training:
+  epochs: 100
+  batch_size: -1
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  device: "auto"
+  seed: 42
+
+split:
+  val_ratio: 0.1
+  test_ratio: 0.1
+  strategy: "random"
