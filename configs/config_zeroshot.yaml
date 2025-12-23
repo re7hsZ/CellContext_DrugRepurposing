@@ -1,4 +1,4 @@
-project_name: CellContext_Baseline
+project_name: CellContext_ZeroShot
 
 paths:
   raw_dir: data/raw
@@ -6,12 +6,12 @@ paths:
   results_dir: results
 
 data:
-  cell_type: general
-  use_pinnacle_features: false
+  cell_type: microglial_cell.txt
+  use_pinnacle_features: true
   neg_sampling_ratio: 1.0
 
 model:
-  hidden_channels: 64
+  hidden_channels: 128
   num_layers: 2
   dropout: 0.1
 
@@ -25,5 +25,5 @@ training:
 split:
   val_ratio: 0.1
   test_ratio: 0.1
-  strategy: random
+  strategy: disease
   min_edges_per_disease: 2

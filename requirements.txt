@@ -1,9 +1,8 @@
-torch
-torch-geometric
-pandas
-numpy
-networkx
-pyyaml
-scikit-learn
-matplotlib
-jupyter
+torch>=2.0.0
+torch-geometric>=2.4.0
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+pyyaml>=6.0
+networkx>=3.0
+matplotlib>=3.7.0

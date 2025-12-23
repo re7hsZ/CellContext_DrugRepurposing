@@ -1,30 +1,39 @@
-import argparse
-import sys
 import os
+import sys
+import argparse
 
-# Add project root to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data.graph_builder import GraphBuilder
-from src.utils.helpers import load_config
+from src.data import GraphBuilder
+from src.utils import load_config
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='configs/config_base.yaml')
+    parser.add_argument('--config', default='configs/config_base.yaml')
     args = parser.parse_args()
     
     config = load_config(args.config)
     
-    cell_type_file = config['data']['cell_type']
-    graph_name = os.path.splitext(cell_type_file)[0] # e.g. microglial_cell
+    cell_type = config['data']['cell_type']
+    use_pinnacle = config['data'].get('use_pinnacle_features', True)
     
-    print(f"Running preprocessing for: {graph_name}")
+    graph_name = os.path.splitext(cell_type)[0]
+    if use_pinnacle and cell_type != 'general':
+        graph_name += '_pinnacle'
     
-    builder = GraphBuilder()
-    data = builder.build_graph(cell_type_file)
+    print(f"Building graph: {graph_name}")
     
-    builder.save_graph(data, graph_name)
-    print("Preprocessing Done.")
+    builder = GraphBuilder(
+        data_dir=config['paths']['processed_dir'],
+        raw_dir=config['paths']['raw_dir']
+    )
+    
+    data = builder.build(cell_type, use_pinnacle=use_pinnacle)
+    builder.save(data, graph_name)
+    
+    print(f"Done. Nodes: {data.node_types}, Edges: {data.edge_types}")
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
