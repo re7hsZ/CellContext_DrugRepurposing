@@ -1,7 +1,7 @@
 import os
 import torch
 import torch.nn.functional as F
-from src.evaluation.metrics import calculate_metrics, calculate_mrr
+from src.evaluation.metrics import calculate_metrics, calculate_mrr, calculate_recall_at_k
 
 
 class Trainer:
@@ -60,8 +60,10 @@ class Trainer:
         pos_mask = edge_label == 1
         if pos_mask.sum() > 0 and (~pos_mask).sum() > 0:
             metrics['MRR'] = calculate_mrr(scores[pos_mask], scores[~pos_mask])
+            metrics['Recall@50'] = calculate_recall_at_k(scores[pos_mask], scores[~pos_mask], k=50)
         else:
             metrics['MRR'] = 0.0
+            metrics['Recall@50'] = 0.0
         
         return metrics, loss
 
@@ -79,7 +81,8 @@ class Trainer:
                 self.logger.info(
                     f"Epoch {epoch:03d} | Loss: {loss:.4f} | "
                     f"Val: {val_loss:.4f} | AUROC: {metrics['auROC']:.4f} | "
-                    f"AP: {metrics['auPRC']:.4f} | MRR: {metrics['MRR']:.4f}"
+                    f"AP: {metrics['auPRC']:.4f} | MRR: {metrics['MRR']:.4f} | "
+                    f"R@50: {metrics.get('Recall@50', 0.0):.4f}"
                 )
                 
                 if metrics['auROC'] > best_auroc:
@@ -91,7 +94,6 @@ class Trainer:
         save_dir = os.path.join(self.config['paths']['results_dir'], 'checkpoints')
         os.makedirs(save_dir, exist_ok=True)
         
-        # Use cell_type in filename to avoid overwriting
         cell_type = self.config['data'].get('cell_type', 'default')
         cell_name = os.path.splitext(cell_type)[0]
         filename = f"best_model_{cell_name}.pth"
