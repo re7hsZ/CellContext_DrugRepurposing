@@ -40,3 +40,23 @@ def calculate_mrr(pos_scores, neg_scores):
     ranks = 1 + (neg > pos).sum(dim=1)
     
     return (1.0 / ranks).mean().item()
+
+
+def calculate_recall_at_k(pos_scores, neg_scores, k=50):
+    """Calculate Recall@K metric."""
+    if torch.is_tensor(pos_scores):
+        pos_scores = pos_scores.detach().cpu().numpy()
+    if torch.is_tensor(neg_scores):
+        neg_scores = neg_scores.detach().cpu().numpy()
+    
+    n_pos = len(pos_scores)
+    if n_pos == 0:
+        return 0.0
+    
+    all_scores = np.concatenate([pos_scores, neg_scores])
+    all_labels = np.concatenate([np.ones(n_pos), np.zeros(len(neg_scores))])
+    
+    sorted_idx = np.argsort(-all_scores)
+    top_k_labels = all_labels[sorted_idx[:k]]
+    
+    return top_k_labels.sum() / min(n_pos, k)

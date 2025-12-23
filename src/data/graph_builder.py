@@ -15,6 +15,7 @@ class GraphBuilder:
         self.global_to_local = {}
         self.original_to_global = {}
         self.gene_name_to_global = {}
+        self.gene_name_upper_to_global = {}  # Case-insensitive lookup
         self.type_counts = {}
         self.pinnacle_embeds = None
         self.pinnacle_cell_data = None
@@ -37,8 +38,12 @@ class GraphBuilder:
             for i, g_idx in enumerate(sorted_group['node_idx']):
                 self.global_to_local[g_idx] = (clean_type, i)
         
+        # Build gene name mappings (case-sensitive and case-insensitive)
         genes = self.node_mapping[self.node_mapping['node_type'] == 'gene/protein']
         self.gene_name_to_global = dict(zip(genes['node_name'], genes['node_idx']))
+        self.gene_name_upper_to_global = dict(
+            zip(genes['node_name'].str.upper(), genes['node_idx'])
+        )
 
     def _sanitize_type(self, t):
         """Convert raw node type to standard name."""
@@ -71,6 +76,7 @@ class GraphBuilder:
         
         self.pinnacle_cell_data = {}
         self.pinnacle_all_proteins = set()
+        self.pinnacle_protein_upper = {}  # Case-insensitive protein lookup
         
         idx = 0
         for cell_idx in sorted(self.pinnacle_embeds.keys()):
@@ -78,9 +84,11 @@ class GraphBuilder:
             if idx + n_proteins <= len(cell_types):
                 cell_name = cell_types[idx]
                 proteins = {names[idx + j]: j for j in range(n_proteins)}
+                proteins_upper = {names[idx + j].upper(): j for j in range(n_proteins)}
                 self.pinnacle_cell_data[cell_name] = {
                     'cell_idx': cell_idx,
-                    'proteins': proteins
+                    'proteins': proteins,
+                    'proteins_upper': proteins_upper
                 }
                 self.pinnacle_all_proteins.update(proteins.keys())
             idx += n_proteins
@@ -98,12 +106,25 @@ class GraphBuilder:
             return None
         
         cell_data = self.pinnacle_cell_data[cell_name]
-        if protein_name not in cell_data['proteins']:
+        
+        # Try exact match first, then case-insensitive
+        if protein_name in cell_data['proteins']:
+            prot_idx = cell_data['proteins'][protein_name]
+        elif protein_name.upper() in cell_data['proteins_upper']:
+            prot_idx = cell_data['proteins_upper'][protein_name.upper()]
+        else:
             return None
         
         cell_idx = cell_data['cell_idx']
-        prot_idx = cell_data['proteins'][protein_name]
         return self.pinnacle_embeds[cell_idx][prot_idx]
+
+    def _lookup_gene(self, name):
+        """Look up gene by name with case-insensitive fallback."""
+        if name in self.gene_name_to_global:
+            return self.gene_name_to_global[name]
+        if name.upper() in self.gene_name_upper_to_global:
+            return self.gene_name_upper_to_global[name.upper()]
+        return None
 
     def _process_edges(self, df):
         """Convert edge DataFrame to typed edge tensors."""
@@ -185,7 +206,7 @@ class GraphBuilder:
         for key, idx in self._process_edges(gd_df).items():
             data[key].edge_index = idx
         
-        # Load PPI
+        # Load PPI with case-insensitive matching
         if cell_type_file == 'general':
             ppi_path = os.path.join(self.data_dir, 'edges_ppi_general.csv')
             if os.path.exists(ppi_path):
@@ -204,9 +225,9 @@ class GraphBuilder:
                         parts = line.strip().split()
                         if len(parts) >= 2:
                             u, v = parts[0], parts[1]
-                            if u in self.gene_name_to_global and v in self.gene_name_to_global:
-                                u_g = self.gene_name_to_global[u]
-                                v_g = self.gene_name_to_global[v]
+                            u_g = self._lookup_gene(u)
+                            v_g = self._lookup_gene(v)
+                            if u_g is not None and v_g is not None:
                                 u_l = self.global_to_local[u_g][1]
                                 v_l = self.global_to_local[v_g][1]
                                 edges.append([u_l, v_l])
@@ -216,7 +237,7 @@ class GraphBuilder:
                     data['gene', 'ppi', 'gene'].edge_index = torch.cat(
                         [idx, idx[[1, 0]]], dim=1
                     )
-        
+
         # Load labels
         dd_df = pd.read_csv(os.path.join(self.data_dir, 'edges_drug_disease_gold.csv'))
         dd_df = dd_df[(dd_df['x_type'] == 'drug') & (dd_df['y_type'] == 'disease')]
@@ -230,7 +251,7 @@ class GraphBuilder:
                 if rev_key not in data.edge_types:
                     data[rev_key].edge_index = data[src, rel, dst].edge_index[[1, 0]]
         
-        # Build node features with ID alignment check
+        # Build node features with case-insensitive ID matching
         embed_dim = 128
         for node_type in data.node_types:
             n = data[node_type].num_nodes
@@ -247,13 +268,11 @@ class GraphBuilder:
                         feats[i] = emb
                         matched += 1
                 
-                # ID alignment check
                 print(f"[ID Alignment] Gene features: {matched}/{n} matched "
                       f"({100*matched/n:.1f}%)")
                 
                 if matched < n * 0.01:
-                    print("[Warning] Very low match rate! Check ID mapping between "
-                          "PrimeKG and PINNACLE.")
+                    print("[Warning] Very low match rate! Check ID mapping.")
                 
                 data[node_type].x = feats
             else:
