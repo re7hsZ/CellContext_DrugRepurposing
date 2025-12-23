@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.utils import load_config, get_device, setup_logger
+from src.utils import load_config, get_device, setup_logger, set_seed
 from src.data import DatasetLoader, get_link_split
 from src.models import HeteroGCN, LinkPredictor
 from src.evaluation import calculate_metrics, calculate_mrr
@@ -19,6 +19,9 @@ def main():
     args = parser.parse_args()
     
     config = load_config(args.config)
+    
+    # Set seed to ensure same data split as training
+    set_seed(config['training']['seed'])
     
     log_dir = os.path.join(config['paths']['results_dir'], 'logs')
     logger = setup_logger('eval', log_dir)
@@ -95,7 +98,7 @@ def main():
         edge_label = test_data[target].edge_label
         
         scores = predictor(z_dict['drug'], z_dict['disease'], edge_idx)
-        loss = F.binary_cross_entropy_with_logits(scores, edge_label).item()
+        loss = F.binary_cross_entropy_with_logits(scores, edge_label.float()).item()
         
         metrics = calculate_metrics(edge_label, scores)
         

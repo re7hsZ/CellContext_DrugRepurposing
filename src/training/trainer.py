@@ -31,7 +31,7 @@ class Trainer:
         edge_label = data[self.target_edge].edge_label
         
         scores = self.predictor(z_dict['drug'], z_dict['disease'], edge_label_index)
-        loss = F.binary_cross_entropy_with_logits(scores, edge_label)
+        loss = F.binary_cross_entropy_with_logits(scores, edge_label.float())
         
         loss.backward()
         self.optimizer.step()
@@ -53,7 +53,7 @@ class Trainer:
         edge_label = data[self.target_edge].edge_label
         
         scores = self.predictor(z_dict['drug'], z_dict['disease'], edge_label_index)
-        loss = F.binary_cross_entropy_with_logits(scores, edge_label).item()
+        loss = F.binary_cross_entropy_with_logits(scores, edge_label.float()).item()
         
         metrics = calculate_metrics(edge_label, scores)
         

@@ -52,10 +52,12 @@ class HeteroGCN(nn.Module):
             # Check if features exist and are non-zero (PINNACLE features for gene)
             if x is not None and x.shape[1] > 1 and x.abs().sum() > 0:
                 h = self.feature_proj(x)
-                h_dict[node_type] = self.layernorm(h)
             else:
                 # Use learnable embeddings (drug, disease)
-                h_dict[node_type] = self.embeddings[node_type].weight
+                h = self.embeddings[node_type].weight
+            
+            # Apply LayerNorm to ALL node types for consistent distribution
+            h_dict[node_type] = self.layernorm(h)
         
         # GNN propagation
         for i, conv in enumerate(self.convs):

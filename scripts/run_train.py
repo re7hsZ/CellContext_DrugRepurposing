@@ -81,7 +81,13 @@ def main():
     
     predictor = LinkPredictor().to(device)
     
-    # Optimizer
+    # Dummy forward to initialize LazyLinear parameters BEFORE optimizer
+    with torch.no_grad():
+        dummy_x = {nt: train_data[nt].x.to(device) for nt in train_data.node_types}
+        _ = model(dummy_x, train_data.to(device).edge_index_dict)
+    logger.info("[Init] LazyLinear initialized via dummy forward")
+    
+    # Optimizer - now LazyLinear parameters are properly initialized
     train_cfg = config['training']
     optimizer = torch.optim.Adam(
         list(model.parameters()) + list(predictor.parameters()),
