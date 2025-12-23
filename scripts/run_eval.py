@@ -103,8 +103,10 @@ def main():
         metrics = calculate_metrics(edge_label, scores)
         
         pos_mask = edge_label == 1
-        if pos_mask.sum() > 0:
+        if pos_mask.sum() > 0 and (~pos_mask).sum() > 0:
             metrics['MRR'] = calculate_mrr(scores[pos_mask], scores[~pos_mask])
+        else:
+            metrics['MRR'] = 0.0
     
     logger.info(f"Test Loss: {loss:.4f}")
     logger.info(f"AUROC: {metrics['auROC']:.4f}")

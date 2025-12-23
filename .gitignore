@@ -15,7 +15,6 @@ data/raw/
 data/processed/*.pt
 results/logs/
 results/checkpoints/
-results/predictions/
 .idea/
 .vscode/
 *.swp
