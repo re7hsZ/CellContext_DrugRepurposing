@@ -57,31 +57,26 @@ def main():
     target = ('drug', 'indication', 'disease')
     train_labels = train_data[target].edge_label
     pos_ratio = train_labels.float().mean().item()
-    logger.info(f"[Neg Sampling Check] Train label mean: {pos_ratio:.3f} "
-                f"(pos: {int(train_labels.sum())}, neg: {int((train_labels == 0).sum())})")
+    logger.info(f"[Neg Sampling] Train: pos={int(train_labels.sum())}, neg={int((train_labels == 0).sum())}")
     
     if pos_ratio > 0.99:
         logger.error("No negative samples! Check splitter.py")
         return
     
-    # Model with input channels
+    # Check PINNACLE feature usage
+    gene_feat = data['gene'].x
+    non_zero = (gene_feat.abs().sum(dim=1) > 0).sum().item()
+    logger.info(f"[PINNACLE] Gene features: {non_zero}/{data['gene'].num_nodes} non-zero")
+    
+    # Model
     model_cfg = config['model']
     num_nodes = {nt: data[nt].num_nodes for nt in data.node_types}
-    
-    # Detect input feature dimensions
-    input_channels = {}
-    for nt in data.node_types:
-        if hasattr(data[nt], 'x') and data[nt].x is not None:
-            input_channels[nt] = data[nt].x.shape[1]
-    
-    logger.info(f"Input channels: {input_channels}")
     
     model = HeteroGCN(
         data.metadata(),
         hidden_channels=model_cfg.get('hidden_channels', 64),
         num_layers=model_cfg.get('num_layers', 2),
-        num_nodes_dict=num_nodes,
-        input_channels_dict=input_channels
+        num_nodes_dict=num_nodes
     ).to(device)
     
     predictor = LinkPredictor().to(device)
@@ -101,7 +96,7 @@ def main():
     # Test
     logger.info("Final test evaluation")
     metrics, loss = trainer.evaluate(test_data)
-    logger.info(f"Test AUROC: {metrics['auROC']:.4f} | AP: {metrics['auPRC']:.4f}")
+    logger.info(f"Test AUROC: {metrics['auROC']:.4f} | AP: {metrics['auPRC']:.4f} | MRR: {metrics['MRR']:.4f}")
 
 
 if __name__ == '__main__':

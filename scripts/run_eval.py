@@ -48,14 +48,12 @@ def main():
     # Model
     model_cfg = config['model']
     num_nodes = {nt: data[nt].num_nodes for nt in data.node_types}
-    input_channels = {nt: data[nt].x.shape[1] for nt in data.node_types if hasattr(data[nt], 'x')}
     
     model = HeteroGCN(
         data.metadata(),
         hidden_channels=model_cfg.get('hidden_channels', 64),
         num_layers=model_cfg.get('num_layers', 2),
-        num_nodes_dict=num_nodes,
-        input_channels_dict=input_channels
+        num_nodes_dict=num_nodes
     ).to(device)
     
     predictor = LinkPredictor().to(device)
