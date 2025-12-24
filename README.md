@@ -7,7 +7,8 @@ GNN-based drug repurposing framework integrating cell-type specific PPI networks
 - Heterogeneous graph neural network for drug-disease link prediction
 - Cell-type specific protein-protein interaction networks
 - PINNACLE protein embeddings integration
-- Zero-shot evaluation for unseen diseases
+- Text embeddings for zero-shot disease prediction
+- Comprehensive evaluation metrics (AUROC, AUPRC, MRR, Recall@K)
 
 ## Installation
 
@@ -41,7 +42,8 @@ python scripts/run_eval.py --config configs/config_base.yaml
 ├── configs/                 # Experiment configurations
 ├── data/
 │   ├── raw/                # PrimeKG and PINNACLE data
-│   └── processed/          # Built graph objects
+│   ├── processed/          # Built graph objects
+│   └── embeddings/         # Cached text embeddings
 ├── notebooks/              # Analysis notebooks
 ├── scripts/                # Entry point scripts
 ├── src/
@@ -61,13 +63,25 @@ python scripts/run_eval.py --config configs/config_base.yaml
 | `config_general.yaml` | Baseline with general PPI |
 | `config_liver.yaml` | Hepatocyte cell context |
 | `config_zeroshot.yaml` | Zero-shot disease evaluation |
+| `config_zeroshot_textembed.yaml` | Zero-shot with text embeddings |
 
 ## Split Strategies
 
 - **Random**: Standard edge-level split for transductive learning
 - **Disease**: Hold out entire diseases for inductive/zero-shot evaluation
 
+## Key Results
+
+| Configuration | AUROC | AUPRC | MRR |
+|--------------|-------|-------|-----|
+| Cell-specific (microglial) | 0.93 | 0.91 | 0.16 |
+| Cell-specific (hepatocyte) | 0.94 | 0.94 | 0.27 |
+| General baseline | 0.96 | 0.96 | 0.22 |
+| Zero-shot (ID only) | 0.48 | 0.52 | 0.02 |
+| Zero-shot (text embed) | 0.75 | 0.67 | 0.01 |
+
 ## References
 
 - Huang et al. TxGNN enables zero-shot prediction of therapeutic use. Nature Medicine (2024)
 - Li et al. PINNACLE: Context-aware gene representations. Nature Methods (2024)
+
