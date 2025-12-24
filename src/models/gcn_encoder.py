@@ -12,7 +12,7 @@ class HeteroGCN(nn.Module):
         self.node_types, self.edge_types = metadata
         self.hidden_channels = hidden_channels
         
-        # Learnable embeddings for nodes without features (drug, disease)
+        # Learnable embeddings for nodes without features
         self.embeddings = nn.ModuleDict()
         
         for node_type in self.node_types:
@@ -21,8 +21,11 @@ class HeteroGCN(nn.Module):
                 self.embeddings[node_type] = nn.Embedding(n_nodes, hidden_channels)
                 nn.init.xavier_uniform_(self.embeddings[node_type].weight)
         
-        # LazyLinear auto-adapts to input dimension (PINNACLE features)
-        self.feature_proj = nn.LazyLinear(hidden_channels)
+        # Per-node-type feature projection (LazyLinear adapts to input dim)
+        # This allows different node types to have different input dims
+        self.feature_projs = nn.ModuleDict({
+            nt: nn.LazyLinear(hidden_channels) for nt in self.node_types
+        })
         
         # LayerNorm for feature distribution stability
         self.layernorm = nn.LayerNorm(hidden_channels)
@@ -49,11 +52,12 @@ class HeteroGCN(nn.Module):
         for node_type in self.node_types:
             x = x_dict.get(node_type)
             
-            # Check if features exist and are non-zero (PINNACLE features for gene)
+            # Check if features exist and are non-zero
             if x is not None and x.shape[1] > 1 and x.abs().sum() > 0:
-                h = self.feature_proj(x)
+                # Use node-type specific projection
+                h = self.feature_projs[node_type](x)
             else:
-                # Use learnable embeddings (drug, disease)
+                # Use learnable embeddings
                 h = self.embeddings[node_type].weight
             
             # Apply LayerNorm to ALL node types for consistent distribution
@@ -67,3 +71,4 @@ class HeteroGCN(nn.Module):
                 h_dict = {k: F.dropout(h, p=0.2, training=self.training) for k, h in h_dict.items()}
         
         return h_dict
+

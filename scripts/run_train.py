@@ -30,10 +30,13 @@ def main():
     
     cell_type = config['data']['cell_type']
     use_pinnacle = config['data'].get('use_pinnacle_features', True)
+    use_text_embeddings = config['data'].get('use_text_embeddings', False)
     
     graph_name = os.path.splitext(cell_type)[0]
     if use_pinnacle and cell_type != 'general':
         graph_name += '_pinnacle'
+    if use_text_embeddings:
+        graph_name += '_textembed'
     
     try:
         data = loader.load(graph_name)

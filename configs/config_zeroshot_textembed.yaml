@@ -1,0 +1,30 @@
+project_name: CellContext_ZeroShot_TextEmbed
+
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  results_dir: results
+
+data:
+  cell_type: microglial_cell.txt
+  use_pinnacle_features: true
+  use_text_embeddings: true
+  neg_sampling_ratio: 1.0
+
+model:
+  hidden_channels: 128
+  num_layers: 2
+  dropout: 0.1
+
+training:
+  epochs: 100
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  device: auto
+  seed: 42
+
+split:
+  val_ratio: 0.1
+  test_ratio: 0.1
+  strategy: disease
+  min_edges_per_disease: 2

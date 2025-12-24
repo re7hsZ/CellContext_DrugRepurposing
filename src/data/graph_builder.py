@@ -3,6 +3,7 @@ import ast
 import torch
 import pandas as pd
 from torch_geometric.data import HeteroData
+from .text_embedder import TextEmbedder
 
 
 class GraphBuilder:
@@ -183,8 +184,14 @@ class GraphBuilder:
         }
         return rel_map.get((src_type, dst_type), 'interacts')
 
-    def build(self, cell_type_file, use_pinnacle=True):
-        """Build heterogeneous graph for given cell type context."""
+    def build(self, cell_type_file, use_pinnacle=True, use_text_embeddings=False):
+        """Build heterogeneous graph for given cell type context.
+        
+        Args:
+            cell_type_file: Cell type file name or 'general'
+            use_pinnacle: Whether to use PINNACLE protein embeddings
+            use_text_embeddings: Whether to use text embeddings for diseases/drugs
+        """
         if self.node_mapping is None:
             self.load_node_mapping()
         
@@ -253,8 +260,11 @@ class GraphBuilder:
         
         # Build node features with case-insensitive ID matching
         embed_dim = 128
+        text_embedder = TextEmbedder() if use_text_embeddings else None
+        
         for node_type in data.node_types:
             n = data[node_type].num_nodes
+            
             if node_type == 'gene' and use_pinnacle and cell_type_file != 'general':
                 feats = torch.zeros(n, embed_dim)
                 genes = self.node_mapping[
@@ -275,6 +285,29 @@ class GraphBuilder:
                     print("[Warning] Very low match rate! Check ID mapping.")
                 
                 data[node_type].x = feats
+            
+            elif node_type == 'disease' and use_text_embeddings:
+                # Use text embeddings for diseases (enables zero-shot)
+                diseases = self.node_mapping[
+                    self.node_mapping['node_type'] == 'disease'
+                ].sort_values('node_idx')['node_name'].tolist()[:n]
+                
+                cache_name = f'disease_{cell_type_file.replace(".", "_")}'
+                feats = text_embedder.embed_diseases(diseases, cache_name)
+                data[node_type].x = feats
+                print(f"[Text Embedding] Disease features: {feats.shape}")
+            
+            elif node_type == 'drug' and use_text_embeddings:
+                # Use text embeddings for drugs
+                drugs = self.node_mapping[
+                    self.node_mapping['node_type'] == 'drug'
+                ].sort_values('node_idx')['node_name'].tolist()[:n]
+                
+                cache_name = f'drug_{cell_type_file.replace(".", "_")}'
+                feats = text_embedder.embed_drugs(drugs, cache_name)
+                data[node_type].x = feats
+                print(f"[Text Embedding] Drug features: {feats.shape}")
+            
             else:
                 data[node_type].x = torch.zeros(n, embed_dim)
         

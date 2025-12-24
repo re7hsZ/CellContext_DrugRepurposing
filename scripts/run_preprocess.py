@@ -17,10 +17,13 @@ def main():
     
     cell_type = config['data']['cell_type']
     use_pinnacle = config['data'].get('use_pinnacle_features', True)
+    use_text_embeddings = config['data'].get('use_text_embeddings', False)
     
     graph_name = os.path.splitext(cell_type)[0]
     if use_pinnacle and cell_type != 'general':
         graph_name += '_pinnacle'
+    if use_text_embeddings:
+        graph_name += '_textembed'
     
     print(f"Building graph: {graph_name}")
     
@@ -29,7 +32,11 @@ def main():
         raw_dir=config['paths']['raw_dir']
     )
     
-    data = builder.build(cell_type, use_pinnacle=use_pinnacle)
+    data = builder.build(
+        cell_type, 
+        use_pinnacle=use_pinnacle,
+        use_text_embeddings=use_text_embeddings
+    )
     builder.save(data, graph_name)
     
     print(f"Done. Nodes: {data.node_types}, Edges: {data.edge_types}")
