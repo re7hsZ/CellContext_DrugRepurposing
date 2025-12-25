@@ -63,7 +63,12 @@ def main():
         dummy_x = {nt: test_data[nt].x.to(device) for nt in test_data.node_types}
         _ = model(dummy_x, test_data.to(device).edge_index_dict)
     
-    predictor = LinkPredictor().to(device)
+    # Configure predictor with optional similarity decoder for zero-shot
+    use_sim = model_cfg.get('use_sim_decoder', False)
+    predictor = LinkPredictor(
+        hidden_channels=model_cfg.get('hidden_channels', 64) if use_sim else None,
+        use_sim_decoder=use_sim
+    ).to(device)
     
     if args.checkpoint:
         ckpt_path = args.checkpoint

@@ -82,7 +82,12 @@ def main():
         num_nodes_dict=num_nodes
     ).to(device)
     
-    predictor = LinkPredictor().to(device)
+    # Configure predictor with optional similarity decoder for zero-shot
+    use_sim = model_cfg.get('use_sim_decoder', False)
+    predictor = LinkPredictor(
+        hidden_channels=model_cfg.get('hidden_channels', 64) if use_sim else None,
+        use_sim_decoder=use_sim
+    ).to(device)
     
     # Dummy forward to initialize LazyLinear parameters BEFORE optimizer
     with torch.no_grad():

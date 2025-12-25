@@ -60,3 +60,54 @@ def calculate_recall_at_k(pos_scores, neg_scores, k=50):
     top_k_labels = all_labels[sorted_idx[:k]]
     
     return top_k_labels.sum() / min(n_pos, k)
+
+
+def calculate_ns_recall(scores, labels, disease_ids, k=50):
+    """
+    Calculate Normalized Sensitivity Recall (NS-Recall) from TxGNN.
+    
+    This metric addresses popularity bias by normalizing recall per disease,
+    giving equal weight to rare and common diseases.
+    
+    Args:
+        scores: Prediction scores for all drug-disease pairs
+        labels: Ground truth labels (1=positive, 0=negative)
+        disease_ids: Disease ID for each prediction
+        k: Top-k threshold for recall calculation
+        
+    Returns:
+        NS-Recall value (mean of per-disease normalized recalls)
+    """
+    if torch.is_tensor(scores):
+        scores = scores.detach().cpu().numpy()
+    if torch.is_tensor(labels):
+        labels = labels.detach().cpu().numpy()
+    if torch.is_tensor(disease_ids):
+        disease_ids = disease_ids.detach().cpu().numpy()
+    
+    unique_diseases = np.unique(disease_ids)
+    disease_recalls = []
+    
+    for disease in unique_diseases:
+        mask = disease_ids == disease
+        d_scores = scores[mask]
+        d_labels = labels[mask]
+        
+        n_pos = d_labels.sum()
+        if n_pos == 0:
+            continue
+        
+        # Sort by score descending
+        sorted_idx = np.argsort(-d_scores)
+        sorted_labels = d_labels[sorted_idx]
+        
+        # Calculate recall at k for this disease
+        top_k = sorted_labels[:k]
+        recall = top_k.sum() / min(n_pos, k)
+        disease_recalls.append(recall)
+    
+    if len(disease_recalls) == 0:
+        return 0.0
+    
+    return np.mean(disease_recalls)
+

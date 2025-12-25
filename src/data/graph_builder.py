@@ -213,15 +213,21 @@ class GraphBuilder:
         for key, idx in self._process_edges(gd_df).items():
             data[key].edge_index = idx
         
-        # Load PPI with case-insensitive matching
-        if cell_type_file == 'general':
-            ppi_path = os.path.join(self.data_dir, 'edges_ppi_general.csv')
-            if os.path.exists(ppi_path):
-                ppi_df = pd.read_csv(ppi_path)
-                for key, idx in self._process_edges(ppi_df).items():
-                    rev = idx[[1, 0]]
-                    data['gene', 'ppi', 'gene'].edge_index = torch.cat([idx, rev], dim=1)
-        else:
+        # Load PPI with multi-relational fusion strategy
+        # Keep both generic and cell-specific edges to avoid isolated nodes
+        
+        # First, always load generic PPI as baseline
+        ppi_generic_path = os.path.join(self.data_dir, 'edges_ppi_general.csv')
+        generic_edges = None
+        if os.path.exists(ppi_generic_path):
+            ppi_df = pd.read_csv(ppi_generic_path)
+            for key, idx in self._process_edges(ppi_df).items():
+                rev = idx[[1, 0]]
+                generic_edges = torch.cat([idx, rev], dim=1)
+                data['gene', 'ppi_generic', 'gene'].edge_index = generic_edges
+        
+        # Then, add cell-specific PPI if available
+        if cell_type_file != 'general':
             ppi_path = os.path.join(
                 self.raw_dir, 'pinnacle/networks/ppi_edgelists', cell_type_file
             )
@@ -241,9 +247,13 @@ class GraphBuilder:
                 
                 if edges:
                     idx = torch.tensor(edges, dtype=torch.long).t()
-                    data['gene', 'ppi', 'gene'].edge_index = torch.cat(
-                        [idx, idx[[1, 0]]], dim=1
-                    )
+                    cell_edges = torch.cat([idx, idx[[1, 0]]], dim=1)
+                    data['gene', 'ppi_cell', 'gene'].edge_index = cell_edges
+                    
+                    # Log edge statistics
+                    n_generic = generic_edges.shape[1] if generic_edges is not None else 0
+                    n_cell = cell_edges.shape[1]
+                    print(f"[Multi-Relational PPI] Generic: {n_generic}, Cell-specific: {n_cell}")
 
         # Load labels
         dd_df = pd.read_csv(os.path.join(self.data_dir, 'edges_drug_disease_gold.csv'))

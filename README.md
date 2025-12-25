@@ -7,8 +7,10 @@ GNN-based drug repurposing framework integrating cell-type specific PPI networks
 - Heterogeneous graph neural network for drug-disease link prediction
 - Cell-type specific protein-protein interaction networks
 - PINNACLE protein embeddings integration
+- Multi-relational PPI fusion (generic + cell-specific edges)
 - Text embeddings for zero-shot disease prediction
-- Comprehensive evaluation metrics (AUROC, AUPRC, MRR, Recall@K)
+- SimGNN-style similarity decoder for inductive inference
+- Comprehensive evaluation metrics (AUROC, AUPRC, MRR, Recall@K, NS-Recall)
 
 ## Installation
 
@@ -64,6 +66,7 @@ python scripts/run_eval.py --config configs/config_base.yaml
 | `config_liver.yaml` | Hepatocyte cell context |
 | `config_zeroshot.yaml` | Zero-shot disease evaluation |
 | `config_zeroshot_textembed.yaml` | Zero-shot with text embeddings |
+| `config_zeroshot_simgnn.yaml` | Zero-shot with SimGNN decoder |
 
 ## Split Strategies
 
@@ -84,4 +87,5 @@ python scripts/run_eval.py --config configs/config_base.yaml
 
 - Huang et al. TxGNN enables zero-shot prediction of therapeutic use. Nature Medicine (2024)
 - Li et al. PINNACLE: Context-aware gene representations. Nature Methods (2024)
+
 
